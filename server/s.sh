@@ -1,5 +1,5 @@
+#!/bin/bash
 clear
-gcc server.c -lpthread
-# gcc fileupdate.c -lpthread
+gcc s.c
 ./a.out
 rm a.out

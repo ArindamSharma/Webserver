@@ -23,7 +23,8 @@ int main(){
         char buff[100];
         printf("enter the filename :- ");
         fgets(buff,sizeof(buff),stdin);
-        send(client,buff,sizeof(buff),0);
+        int x=send(client,buff,sizeof(buff),0);
+        printf("%d\n",x);
     }
     return 0;
 }

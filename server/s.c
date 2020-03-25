@@ -3,6 +3,7 @@
 #include<arpa/inet.h>//for sockaddr_in,inet_addr,htons
 #include<stdlib.h>//for exit()
 #include<unistd.h>//for read(),write()
+#include<string.h>
 int main(){
     int server=socket(AF_INET,SOCK_STREAM,0);
 
@@ -27,6 +28,9 @@ int main(){
         char fname[100];
         int x=recv(client,fname,sizeof(fname),0);
         if(x<=0){
+            break;
+        }
+        if(strcmp(fname,"exit\n")==0){
             break;
         }
         printf("%s",fname);

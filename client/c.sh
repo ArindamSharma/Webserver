@@ -1,4 +1,5 @@
+#!/bin/bash
 clear
-gcc client.c -lpthread
+gcc c.c
 ./a.out
 rm a.out
