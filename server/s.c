@@ -23,17 +23,25 @@ int main(){
     printf("Listening...\n");
     socklen_t size=sizeof(other);
     int client=accept(server,(struct sockaddr *)&other,&size);
-    while(1)
+    // while(1)
     {
         char fname[100];
         int x=recv(client,fname,sizeof(fname),0);
-        if(x<=0){
-            break;
+        printf("%s\n",fname);
+
+        FILE *A;
+        A=fopen(fname,"rb");
+        int tmp=fgetc(A);
+        send(client,&tmp,sizeof(&tmp),0);
+        while(tmp!=EOF){
+            tmp=fgetc(A);
+            send(client,&tmp,sizeof(&tmp),0);
         }
-        if(strcmp(fname,"exit\n")==0){
-            break;
-        }
-        printf("%s",fname);
+        fclose(A);
+        printf("\n");
+
+
+
     }
     return 0;
 }

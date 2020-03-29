@@ -1,4 +1,5 @@
 #include<stdio.h>
+#include<string.h>
 #include<stdlib.h>//for exit()
 #include<sys/socket.h>//for socket()
 #include<unistd.h>//for read(), write()
@@ -19,12 +20,27 @@ int main(){
         exit(1);
     }
     printf("Connection Establish\n");
-    while(1){    
-        char buff[100];
-        printf("enter the filename :- ");
-        fgets(buff,sizeof(buff),stdin);
-        int x=send(client,buff,sizeof(buff),0);
-        printf("%d\n",x);
+    // while(1)
+    {    
+        char buff[]="pic.png";
+        // char buff[100];
+        // printf("enter the filename :- ");
+        // fgets(buff,sizeof(buff),stdin);
+        // scanf("%s",buff);
+        send(client,buff,sizeof(buff),0);
+
+        FILE *B;
+        B=fopen(buff,"wb");
+        int tmp;
+        recv(client,&tmp,sizeof(&tmp),0);
+        while(tmp!=EOF)
+        {
+            fputc(tmp,B);
+            recv(client,&tmp,sizeof(&tmp),0);
+            printf("loading\n");
+        }
+        fclose(B);
+        printf("\nFinish Reciving\n");
     }
     return 0;
 }
