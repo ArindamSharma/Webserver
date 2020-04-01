@@ -23,12 +23,13 @@ int main(){
     // while(1)
     {    
         char buff[]="pic.png";
+        // char buff[]="p.jpg";
         // char buff[100];
         // printf("enter the filename :- ");
         // fgets(buff,sizeof(buff),stdin);
         // scanf("%s",buff);
         send(client,buff,sizeof(buff),0);
-
+        int counter=0;
         FILE *B;
         B=fopen(buff,"wb");
         int tmp;
@@ -37,10 +38,10 @@ int main(){
         {
             fputc(tmp,B);
             recv(client,&tmp,sizeof(&tmp),0);
-            printf("loading\n");
+            printf("Reciving %d bytes...\r",counter++);
         }
         fclose(B);
-        printf("\nFinish Reciving\n");
+        printf("\nFinished \n");
     }
     return 0;
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
 clear
-gcc c.c
+gcc stage2.c
 ./a.out
 rm a.out
