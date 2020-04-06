@@ -217,24 +217,52 @@ void *subserver(void *arg){
     int x=*(int *)arg;
 	// printf("%d\n",x);
     printf("Client Connected [%s:%d] \n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
-    int stat,fline=0;
     char firstline[135];
-    while(client[x][1]==1)
+    int firstcount=0;
+    char method[10];
+    char request[100];
+    char http[10];
+    int status;
+    // while(1)
+    {
+        char tmp_char;
+        status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+        while(tmp_char!=' '){
+            method[firstcount++]=tmp_char;
+            status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+        }
+        firstcount=0;
+        status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+        while(tmp_char!=' '){
+            request[firstcount++]=tmp_char;
+            status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+        }
+        firstcount=0;
+        status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+        while(tmp_char!='\n')
+        {
+            // printf("[%c]\n",tmp_char);
+            http[firstcount++]=tmp_char;
+            status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+        }
+        http[firstcount-1]='\0';
+    }
+    printf("[%s-%s-%s]\n",http,method,request);
+    if(strcmp(method,"POST")==0){
+        
+    }
+    else if(strcmp(method,"GET")==0){
+        
+    }
+    while(1)
     {
         char line[250];
         int char_count=0;
         while(1)
         {
             char tmp_char;
-            stat=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
-            if(stat<=0){
-                printf("Client Disconected [%s:%d]\n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
-                client[x][1]=0;
-                close(client[x][0]);
-                active_client--;
-                break;
-            }
-            else{
+            status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+            if(status>0){
                 if(tmp_char=='\n'){
                     line[char_count]='\0';
                     break;
@@ -243,18 +271,20 @@ void *subserver(void *arg){
                     line[char_count++]=tmp_char;
                 }
             }
+            else{
+                client[x][1]=0;
+                break;
+            }
         }
-        if(strcmp(line,"\r\0")==0){
+        if(client[x][1]==0 ||strcmp(line,"\r\0")==0){
             break;
         }
-        if(fline==0){
-            strcpy(firstline,line);
-            fline++;
-        }
-        printf("%s\n",line);
+        // printf("%s\n",line);
     }
     if(client[x][1]==0){
         printf("thread is closing because client disconnected\n");
+        close(client[x][0]);
+        active_client--;
         pthread_exit(NULL);
     }
     printf("Out of While Loop \nBut client is still connected \n");
