@@ -126,6 +126,7 @@ void quit(){
 	printf("Server Closed\n");
 	pthread_cancel(tid_thread_creator);
 	close(server);
+    pthread_cancel(tid_cmd);
 	exit(1);
 }
 
@@ -215,12 +216,9 @@ void *subserver(void *arg){
     int x=*(int *)arg;
 	// printf("%d\n",x);
     printf("Client Connected [%s:%d] \n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
-	// char request_header[500];
-    // char method[10];
-    // char http[10];
-    // char resource[100];
-    int stat;
-    while(1)
+    int stat,fline=0;
+    char firstline[135];
+    while(client[x][1]==1)
     {
         char line[250];
         int char_count=0;
@@ -245,67 +243,24 @@ void *subserver(void *arg){
                 }
             }
         }
-        if(client[x][1]==0){
+        if(strcmp(line,"\r\0")==0){
             break;
+        }
+        if(fline==0){
+            strcpy(firstline,line);
+            fline++;
         }
         printf("%s\n",line);
     }
-    
-	pthread_exit(NULL);
+    if(client[x][1]==0){
+        printf("thread is closing because client disconnected\n");
+        pthread_exit(NULL);
+    }
+    printf("Out of While Loop \nBut client is still connected \n");
 
-        // printf("%s",line);
-        // printf("New line\n");
-        
-		// stat=read(client[x][0],tmp_request_header,sizeof(tmp_request_header));
-        // printf("%d %d\n",stat,errno);
-		// if(stat<=0){
-		// }
-		// else{
-        //     if(strcmp(tmp_request_header,"\r")==0){
-        //         request_header[count++]=' ';
-        //     }
-        //     else{
-        //         request_header[count++]=tmp_request_header[0];
-        //     }
-		// }
-        // printf("%s",request_header);
-			
-
-
-    // while(1)
-    // {
-	// 	stat=recv(client[x][0],request_header,sizeof(request_header),0);
-    //     printf("%d\n",stat);
-	// 	if(stat<=0){
-	// 		printf("Client Disconected [%s:%d]\n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
-	// 		// printf("end\n");
-    //         client[x][1]=0;
-    //         close(client[x][0]);
-	// 		active_client--;
-	// 		// break;
-	// 	}
-    // 	else{
-    // 	    printf("%s",request_header);
-    //         // char firstline[294];
-    //         // int letter_count=0,resource_count=0;
-    //         // while(request_header[letter_count]!='\r'){
-    //         //     firstline[letter_count]=request_header[letter_count];
-    //         //     letter_count++;
-    //         // }
-    //         // // printf("[%s]\n",firstline);
-    //         // letter_count=0;
-    //         // while(firstline[letter_count]!=' '){
-    //         //     method[letter_count]=firstline[letter_count];
-    //         //     letter_count++;
-    //         // }
-    //         // letter_count++;
-    //         // while(firstline[letter_count]!=' '){
-    //         //     resource[resource_count]=firstline[letter_count];
-    //         //     letter_count++;
-    //         //     resource_count++;
-    //         // }
-    //         // printf("method:- %s file:- '%s'\n",method,resource);
-	// 	}
-	// }
-
+    printf("Client has to Disconect [%s:%d]\n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
+    client[x][1]=0;
+    close(client[x][0]);
+    active_client--;
+    pthread_exit(NULL);
 }
