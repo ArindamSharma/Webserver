@@ -31,6 +31,14 @@ void *cmd(void *arg);
 void terminate_all();
 void terminate(int i);
 void quit();
+void GET(char method[],char http[],char request[]);
+void POST();
+void RessponseHead(char method[],char http[],char request[]);
+
+struct request_d{
+    char name[100];
+    char value[300];
+};
 
 int main(){
     active_client=0;
@@ -212,75 +220,100 @@ void *cmd(void *arg){
     }
     pthread_exit(NULL);
 }
+void RessponseHead(char method[],char http[],char request[]){
+
+}
+
+void GET(char method[],char http[],char request[]){
+    printf("%s %s %s",method,http,request);
+    printf("\nin GET\n");
+    RessponseHead(method,http,request);
+}
+
+void POST(){
+    printf("\nin POST\n");
+}
 
 void *subserver(void *arg){
     int x=*(int *)arg;
 	// printf("%d\n",x);
     printf("Client Connected [%s:%d] \n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
-    char firstline[135];
-    int firstcount=0;
+    int status;
     char method[10];
     char request[100];
     char http[10];
-    int status;
-    // while(1)
+    
+    //firstline 
+    char firstline[135];
+    char tmp_char;
+    int fcount=0;
+    status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+    while(tmp_char!=' ' && status>0){
+        method[fcount++]=tmp_char;
+        status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+    }
+    fcount=0;
+    status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+    while(tmp_char!=' ' && status>0){
+        request[fcount++]=tmp_char;
+        status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+    }
+    fcount=0;
+    status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+    while(tmp_char!='\r' && status>0)
     {
-        char tmp_char;
+        http[fcount++]=tmp_char;
         status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
-        while(tmp_char!=' ' && status>0){
-            method[firstcount++]=tmp_char;
-            status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
-        }
-        firstcount=0;
-        status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
-        while(tmp_char!=' ' && status>0){
-            request[firstcount++]=tmp_char;
-            status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
-        }
-        firstcount=0;
+    }
+    status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
+    // printf("%c",tmp_char);
+    //firstline recived
+
+    printf("\n[%s-%s-%s]\n",http,method,request);
+    
+    //rest of the request
+    struct request_d request_detail[20];
+    int request_detail_n=0;
+
+    while(status>0)
+    {
+        char line[250];
+        fcount=0;
         status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
         while(tmp_char!='\n' && status>0)
         {
-            http[firstcount++]=tmp_char;
+            line[fcount++]=tmp_char;
             status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
         }
-        http[firstcount-1]='\0';
-    }
-    // printf("[%s-%s-%s]\n",http,method,request);
-    while(1)
-    {
-        char line[250];
-        int char_count=0;
-        while(client[x][1]==1)
-        {
-            char tmp_char;
-            status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
-            if(status<=0){
-                client[x][1]=0;
-            }
-            else{
-                if(tmp_char=='\n'){
-                    line[char_count]='\0';
-                    break;
-                }
-                else{
-                    line[char_count++]=tmp_char;
-                }
-            }
-        }
-        if(client[x][1]==0 || strcmp(line,"\r\0")==0){
+        line[fcount]='\0';
+        if(strcmp(line,"\r\0")==0){
             break;
         }
-        printf("%s\n",line);
+        // printf("%s\n",line);
+        sscanf(line,"%[^:]: %[^\r]",request_detail[request_detail_n].name,request_detail[request_detail_n].value);
+        request_detail_n++;
+    }
+    // printing for checking
+    // printf("[%d]",request_detail_n);
+    // for(int i=0;i<request_detail_n;i++){
+    //     printf("[%s]:[%s]\n",request_detail[i].name,request_detail[i].value);
+    // }
+    if(status<=0){
+        printf("Client has to Disconect [%s:%d]\n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
+        client[x][1]=0;
+        close(client[x][0]);
+        active_client--;
+        pthread_exit(NULL);
     }
     if(strcmp(method,"POST")==0){
-        
+        // printf("\nPOST\n");
     }
     else if(strcmp(method,"GET")==0){
-        
+        // printf("\nGET\n");
+        GET(method,http,request);
     }
     
-    printf("Out of While Loop \nBut client is still connected \n");
+    // printf("\nOut of While Loop \nBut client is still connected \n");
 
     printf("Client has to Disconect [%s:%d]\n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
     client[x][1]=0;
