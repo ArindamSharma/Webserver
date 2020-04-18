@@ -24,7 +24,7 @@ int client[MAX][2];
 int active_client,server;
 struct sockaddr_in other[MAX];
 pthread_t tid[MAX],tid_thread_creator,tid_cmd;
-struct request_d{char name[100];char value[300];}request_header_fields[MAX][20];
+struct request_d{char name[60];char value[300];}request_header_fields[MAX][20];
 
 void *subserver(void *arg);
 void *thread_creator(void *arg);
@@ -32,10 +32,12 @@ void *cmd(void *arg);
 void terminate_all();
 void terminate(int i);
 void quit();
-void GET(char method[],char http[],char request[]);
+void close_client(int i);
+void GET(char method[],char http[],char request[],int x);
 void POST();
 void RessponseHead(char method[],char http[],char message[]);
 void route(char request[]);
+void errorResponse(int x);
 
 
 int main(){
@@ -102,6 +104,12 @@ int main(){
     close(server);
     return 0;
 }
+void close_client(int i){
+    memset(request_header_fields[i],0,sizeof(request_header_fields[i]));
+    client[i][1]=0;
+    close(client[i][0]);
+    active_client--;
+}
 
 void terminate_all(){
     int c=0;
@@ -120,15 +128,12 @@ void terminate_all(){
 
 void terminate(int i){
     if(client[i][1]==1){
-        memset(request_header_fields[i],0,sizeof(request_header_fields[i]));
-        close(client[i][0]);
-        client[i][1]=0;
-        active_client--;
+        close_client(i);
         pthread_cancel(tid[i]);
         printf("Terminating Client [%s:%d]\n",inet_ntoa(other[i].sin_addr),ntohs(other[i].sin_port));
     }
 }
-
+ 
 void quit(){
 	terminate_all();
 	printf("Server Closed\n");
@@ -215,6 +220,9 @@ void *cmd(void *arg){
             }
             printf("\n");
         }
+        else if(strcmp(buff,"ip\n")==0){
+            printf(CYN"LINK :- http://%s:%d\n"RESET,ip,PORT);
+        }
 
     }
     pthread_exit(NULL);
@@ -222,25 +230,73 @@ void *cmd(void *arg){
 void RessponseHead(char method[],char http[],char message[]){
 
 }
+void errorResponse(int x){
+    printf("sending page not found\n");
+    char tmp[]="HTTP/1.0 404 Not Found\r\n"
+    "Content-Type: text/html\r\n"
+    "Content-Language: en-US\r\n"
+    "\r\n"
+    "<!DOCTYPE html>\r\n"
+    "<html>\r\n"
+    "<title>Page Not Found</title>\r\n"
+    "<body>\r\n"
+    "<h1>Page Not Found </h1>\r\n"
+    "<p>Url dosent exist in this website</p>\r\n"
+    "</body>\r\n"
+    "</html>\r\n";
+    send(client[x][0],tmp,sizeof(tmp),0);
+}
 
-void GET(char method[],char http[],char request[]){
-    printf(":- %s %s %s\n",method,http,request);
-    // printf("\nin GET\n");
+void GET(char method[],char http[],char r_url[],int x){
+    printf(":- %s %s %s\n",method,http,r_url);
+
     char message[35];
-    route(request);
+    route(r_url);
     // printf("[%s]\n",request);
-    char alter_request[strlen(request)+10];
-    sprintf(alter_request,"templates%s",request);
-    printf("[%s]\n",alter_request);
-    FILE *A=fopen(alter_request,"r");
+    char alter_r_url[strlen(r_url)+10];
+    sprintf(alter_r_url,"templates%s",r_url);
+    printf("[%s]\n",alter_r_url);
+    FILE *A=fopen(alter_r_url,"rb");
     if(A==NULL){
-        printf("%s\n",strerror(errno));
+        printf("%s %d\n",strerror(errno),errno);
+        errorResponse(x);
     }
     else{
+        RessponseHead(method,http,message); 
+        char tmp[]="HTTP/1.1 200 Ok\r\n"
+        "Content-Type: text/html\r\n"
+        // ""
+        "\r\r"
+        "<!DOCTYPE html>\r\n"
+        "<html>\r\n"
+        "<title>Page Not Found</title>\r\n"
+        "<body>\r\n"
+        "<h1>Page Not Found </h1>\r\n"
+        "<p>Url dosent exist in this website</p>\r\n"
+        "</body>\r\n"
+        "</html>\r\n";
+        send(client[x][0],tmp,sizeof(tmp),0);
+        // int temp=fgetc(A);
+        // while()
         fclose(A);
     }
-    RessponseHead(method,http,message); 
 }
+// {
+    //     char fname[100];
+    //     int x=recv(client,fname,sizeof(fname),0);
+    //     printf("%s\n",fname);
+    //     FILE *A;
+    //     A=fopen(fname,"rb");
+    //     int tmp=fgetc(A),c=0;
+    //     send(client,&tmp,sizeof(&tmp),0);
+    //     while(tmp!=EOF){
+    //         tmp=fgetc(A);
+    //         c++;
+    //         send(client,&tmp,sizeof(&tmp),0);
+    //     }
+    //     fclose(A);
+    //     printf("\n");
+    // }
 
 void POST(){
     printf("\nin POST\n");
@@ -252,11 +308,10 @@ void *subserver(void *arg){
     printf("Client Connected [%s:%d] ",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
     int status;
     char method[10];
-    char request[100];
+    char r_url[100];
     char http[10];
     
-    //firstline 
-    char firstline[135];
+    //firstline
     char tmp_char;
     int fcount=0;
     status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
@@ -267,7 +322,7 @@ void *subserver(void *arg){
     fcount=0;
     status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
     while(tmp_char!=' ' && status>0){
-        request[fcount++]=tmp_char;
+        r_url[fcount++]=tmp_char;
         status=recv(client[x][0],&tmp_char,sizeof(tmp_char),0);
     }
     fcount=0;
@@ -281,12 +336,9 @@ void *subserver(void *arg){
     // printf("%c",tmp_char);
     //firstline recived
 
-    // printf("\n[%s-%s-%s]\n",http,method,request);
+    // printf("\n[%s-%s-%s]\n",http,method,r_url);
     
-    //rest of the request
-    struct request_d request_detail[20];
-    int request_detail_n=0;
-
+    int rhf_n=0;
     while(status>0)
     {
         char line[250];
@@ -302,19 +354,18 @@ void *subserver(void *arg){
             break;
         }
         // printf("%s\n",line);
-        sscanf(line,"%[^:]: %[^\r]",request_detail[request_detail_n].name,request_detail[request_detail_n].value);
-        request_detail_n++;
+        sscanf(line,"%[^:]: %[^\r]",request_header_fields[x][rhf_n].name,request_header_fields[x][rhf_n].value);
+        rhf_n++;
     }
     // printing for checking
-    // printf("[%d]",request_detail_n);
-    // for(int i=0;i<request_detail_n;i++){
-    //     printf("[%s]:[%s]\n",request_detail[i].name,request_detail[i].value);
+    // printf("[%d]",rhf_n);
+    // for(int i=0;i<rhf_n;i++){
+    //     printf("[%s]:[%s]\n",request_header_fields[x][i].name,request_header_fields[x][i].value);
     // }
+
     if(status<=0){
         printf("Client has to Disconnect [%s:%d]\n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
-        client[x][1]=0;
-        close(client[x][0]);
-        active_client--;
+        close_client(x);
         pthread_exit(NULL);
     }
     if(strcmp(method,"POST")==0){
@@ -322,16 +373,11 @@ void *subserver(void *arg){
     }
     else if(strcmp(method,"GET")==0){
         // printf("\nGET\n");
-        GET(method,http,request);
+        GET(method,http,r_url,x);
     }
     
-    // printf("\nOut of While Loop \nBut client is still connected \n");
-
     printf("Client has to Disconnect [%s:%d]\n",inet_ntoa(other[x].sin_addr),ntohs(other[x].sin_port));
-    memset(request_detail, 0,sizeof(request_detail));
-    client[x][1]=0;
-    close(client[x][0]);
-    active_client--;
+    close_client(x);
     pthread_exit(NULL);
 }
 

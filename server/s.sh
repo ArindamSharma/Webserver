@@ -1,5 +1,5 @@
 #!/bin/bash
 clear
-gcc stage6.c -lpthread
+gcc stage7.c -lpthread
 ./a.out
 rm a.out
